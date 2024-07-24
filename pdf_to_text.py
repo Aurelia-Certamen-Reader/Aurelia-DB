@@ -25,9 +25,9 @@ PUNCTUATION_SUBSTITUTES = {
     "'":["‘", "’"],
     "-":["–"]
 }
-PUNCTUATION = ".?!,:;#\-—&='\"/()" 
+PUNCTUATION = r".?!,:;#\-—&='\"/()" 
 
-UNKNOWN_CHARACTER_PATTERN = f"(?a)[^\w\s{MACRONS}{PUNCTUATION}]" # (?a) means only ASCII matching (otherwise the weird characters will be counted as unicode letters)
+UNKNOWN_CHARACTER_PATTERN = fr"(?a)[^\w\s{MACRONS}{PUNCTUATION}]" # (?a) means only ASCII matching (otherwise the weird characters will be counted as unicode letters)
 
 def fixMacrons(text : str) -> str:
     for vowel, badChars in MACRON_MISREPRESENTATIONS.items():
@@ -64,9 +64,10 @@ def extractText(fileName: str, inDir: str, outDir: str) -> None:
         blocks = page.get_text("blocks") # type: ignore
         for block in blocks:
             block = fixMacrons(standardizePunctuation(block[4])).strip()
-            block = re.sub("\s+", " ", block)
+            block = re.sub(r"\s+", " ", block)
             if block!= "":
                 outfile.write(block + "\n")
+        outfile.write("\n")
     return
 
 def printArr(arr : list[str]) -> str:
