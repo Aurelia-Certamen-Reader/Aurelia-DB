@@ -63,86 +63,63 @@ round = NEW_ROUND
 round["series"], round["division"], round["year"] = TEST_FILE[:-4].split("_")
 round["year"] = int(round["year"])  
 
-state = question = bonus = None
+state = None
 
 for i in range(len(file)):
     line = file[i]
     if not line: # if page break
-        state = question = bonus = None
-        if bonus:
-            question["boni"].append(bonus)
-            bonus = None
-        if question:
-            round["questions"].append(question)
-            question = None
+        state = None
         continue
     elif match := re.match(bestTossupMarker, line): # if it's a tossup
         state = "tossup"
-        if bonus:
-            question["boni"].append(bonus)
-            bonus = None
-        if question: # if there was already a question, add it to the list
-            round["questions"].append(question)
-        question = NEW_QUESTION
+        round["questions"].append({})
+        question = round["questions"][-1]
         question["question"] = line[len(match.group()):]
         question["number"] = match.group("number")
         question["boni"] = []
         continue
     elif bestBonusMarker and (match := re.match(bestBonusMarker, line)):
-        if bonus:
-            question["boni"].append(bonus)  
         state = "bonus"
-        bonus = {"question": match.group()}
+        round["questions"][-1]["boni"].append({"question": match.group()})
         continue
     elif match := isAnswer(line):
         if state == "tossup":
             state = "tossupAnswer"
-            question["answer"] = match
+            round["questions"][-1]["answer"] = match
         if state == "bonus": 
             state = "bonusAnswer"
-            bonus["answer"] = match
+            round["questions"][-1]["boni"][-1]["answer"] = match
         continue
     ### Handling unspecified text:
     else:
         if state == None or state == "header":
-            if bonus:
-                question["boni"].append(bonus)
-                bonus = None
-            if question:
-                round["questions"].append(question)
-                question = None
             state = "header"
             # header handling
             continue
         if state == "tossupAnswer":
-            question["answer"] += " " + line
+            round["questions"][-1]["answer"] += " " + line
             continue
         if state == "bonusAnswer":
-            bonus["answer"] += line
+            round["questions"][-1]["boni"][-1]["answer"] += line
             continue
         if i < len(file) - 1:
             nextLine = file[i+1]
             if not (nextLine) or re.match(bestTossupMarker, nextLine) or (bestBonusMarker and re.match(bestBonusMarker, nextLine)):
                 if state == "tossup":
-                    question["answer"] = line
+                    round["questions"][-1]["answer"] = line
                     # round["questions"].append(question)
                     # question = None
                     continue
                 if state == "bonus":
-                    bonus["answer"] = line
+                    round["questions"][-1]["boni"][-1]["answer"] = line
                     continue
         else:
             if state == "tossup":
-                question["question"] += line
+                round["questions"][-1]["question"] += line
                 continue
             if state == "bonus":
-                bonus["question"] += line
+                round["questions"][-1]["boni"][-1]["question"] += line
                 continue
-
-if bonus:
-    question["boni"].append(bonus)
-if question:
-    round["questions"].append(question)
 rounds.append(round)
 
 for round in rounds:
