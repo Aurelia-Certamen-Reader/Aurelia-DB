@@ -38,8 +38,6 @@ def isAnswer(text : str):
         return text
     return None
 
-rounds = []
-
 file = open(os.path.join(OUTPUT_DIRECTORY, TEST_FILE), encoding="utf-8").read()
 bestTossupMarker = None
 bestBonusMarker = None
@@ -92,9 +90,26 @@ for i in range(len(file)):
         continue
     ### Handling unspecified text:
     else:
-        if state == None or state == "header":
-            state = "header"
+        if state == None: # Probably a header
             # header handling
+            roundNum = None
+            if match := re.search(r"Round (?P<num>\d)", line, re.IGNORECASE):
+                roundNum = int(match.group("num"))
+            elif match := re.search(r"Round (?P<num>One|Two|Three|Four|Five|Six|Seven|Eight|Nine)", line, re.IGNORECASE):
+                roundNum = {"one":1, "two":2, "three":3, "four":4, "five":5, "six":6, "seven":7, "eight":8, "nine":9}[match.group("num").lower()] 
+            elif re.search(r"\bround\b", line, re.IGNORECASE) and (match := re.search(r"finals?\b", line, re.IGNORECASE)):
+                roundNum = "final"
+            else:
+                continue
+
+            if not round["number"]:
+                round["number"] = roundNum
+            elif round["number"]!= roundNum:
+                oldNum = round["number"]
+                with open(os.path.join(OUTPUT_DIRECTORY, TEST_FILE[:-4] + "_" + ("final" if oldNum == "final" else "r"+str(oldNum)) + ".json"), "w", encoding="utf-8") as outfile:
+                    outfile.write(json.dumps(round, indent=4))
+                round["questions"] = []
+                round["number"] = roundNum
             continue
         if state == "tossupAnswer":
             round["questions"][-1]["answer"] += " " + line
@@ -120,8 +135,7 @@ for i in range(len(file)):
             if state == "bonus":
                 round["questions"][-1]["boni"][-1]["question"] += line
                 continue
-rounds.append(round)
 
-for round in rounds:
-    with open(os.path.join(OUTPUT_DIRECTORY, TEST_FILE[:-4] + ".json"), "w", encoding="utf-8") as outfile:
-        outfile.write(json.dumps(round, indent=4))
+
+with open(os.path.join(OUTPUT_DIRECTORY, f"{TEST_FILE[:-4]}_{"final" if round["number"]=="final" else ("r"+str(round["number"]))}.json"), "w", encoding="utf-8") as outfile:
+    outfile.write(json.dumps(round, indent=4))
