@@ -34,7 +34,7 @@ def isAnswer(text : str):
     """
     if match := re.match(r"ans(?:wer)?:\s?", text, re.IGNORECASE):
         return text[len(match.group()):]
-    if match := re.match(r"^[a-zāēīōū]+$", text):
+    if match := re.match(r"^[^a-zāēīōū]+$", text):
         return text
     return None
 
@@ -50,7 +50,7 @@ else:
     print("ERROR: Could not determine tossup format")
     quit()
 
-if bonusMatch := re.findall(r"^(?:Bonus 1|B1|Bonus).?:?", file, re.MULTILINE | re.IGNORECASE):
+if bonusMatch := re.findall(r"^(?:Bonus 1|B1|Bonus).?:?\s?", file, re.MULTILINE | re.IGNORECASE):
     bestBonusMarker = re.sub(r"\d", r"\\d", bonusMatch[0])
 else:
     print("WARNING: Could not find boni")
@@ -72,21 +72,40 @@ for i in range(len(file)):
         state = "tossup"
         round["questions"].append({})
         question = round["questions"][-1]
-        question["question"] = line[len(match.group()):]
         question["number"] = match.group("number")
+        question["question"] = line[len(match.group()):]
+        question["answer"] = None
         question["boni"] = []
         continue
     elif bestBonusMarker and (match := re.match(bestBonusMarker, line)):
         state = "bonus"
-        round["questions"][-1]["boni"].append({"question": match.group()})
+        round["questions"][-1]["boni"].append({"question": line[len(match.group()):]})
         continue
     elif match := isAnswer(line):
+        question = round["questions"][-1]
         if state == "tossup":
             state = "tossupAnswer"
-            round["questions"][-1]["answer"] = match
-        if state == "bonus": 
+            question["answer"] = match
+        elif state == "bonus": 
             state = "bonusAnswer"
-            round["questions"][-1]["boni"][-1]["answer"] = match
+            question["boni"][-1]["answer"] = match
+        elif state == "tossupAnswer":
+            question["answer"] += match
+        elif state == "bonusAnswer":
+            question["boni"][-1]["answer"] += " " + match
+        else: # after the start of a new page
+            if question["boni"]:
+                state = "bonusAnswer"
+                if "answer" in question["boni"][-1].keys():
+                    question["boni"][-1]["answer"] += " " + match
+                else:
+                    question["boni"][-1]["answer"] = match
+            else:
+                state = "tossupAnswer"
+                if question["answer"]:
+                    question["answer"] = match
+                else:
+                    question["answer"] = " " + match
         continue
     ### Handling unspecified text:
     else:
@@ -115,11 +134,11 @@ for i in range(len(file)):
             round["questions"][-1]["answer"] += " " + line
             continue
         if state == "bonusAnswer":
-            round["questions"][-1]["boni"][-1]["answer"] += line
+            round["questions"][-1]["boni"][-1]["answer"] += " " + line
             continue
-        if i < len(file) - 1:
+        if i < len(file) - 1: 
             nextLine = file[i+1]
-            if not (nextLine) or re.match(bestTossupMarker, nextLine) or (bestBonusMarker and re.match(bestBonusMarker, nextLine)):
+            if not (nextLine) or re.match(bestTossupMarker, nextLine) or (bestBonusMarker and re.match(bestBonusMarker, nextLine)): # if the next line is the start of a new question
                 if state == "tossup":
                     round["questions"][-1]["answer"] = line
                     # round["questions"].append(question)
@@ -128,13 +147,12 @@ for i in range(len(file)):
                 if state == "bonus":
                     round["questions"][-1]["boni"][-1]["answer"] = line
                     continue
-        else:
-            if state == "tossup":
-                round["questions"][-1]["question"] += line
-                continue
-            if state == "bonus":
-                round["questions"][-1]["boni"][-1]["question"] += line
-                continue
+        if state == "tossup": # NOT an else if; if there is a next line but it's not the start of a new question, then current line probably isn't an answer
+            round["questions"][-1]["question"] += " " + line
+            continue
+        if state == "bonus":
+            round["questions"][-1]["boni"][-1]["question"] += " " + line
+            continue
 
 
 with open(os.path.join(OUTPUT_DIRECTORY, f"{TEST_FILE[:-4]}_{"final" if round["number"]=="final" else ("r"+str(round["number"]))}.json"), "w", encoding="utf-8") as outfile:
