@@ -5,28 +5,46 @@ import json
 OUTPUT_DIRECTORY = "output"
 TEST_FILE = "texas_advanced_2010.txt"
 
-NEW_ROUND = {
-    "series": None,
-    "division": None,
-    "year": None,
-    "number": None,
+"""
+Object Structures:
+Round:
+{
+    "series": str,
+    "division": str,
+    "year": int,
+    "number": int | "final",
     "questions": []
 }
 
-NEW_QUESTION = {
-    "question": "",
-    "answer": "",
-    "boni": []
+Question:
+{
+    "number": int,
+    "question": str,
+    "answer": str
+    "boni": [
+        {
+            "question": str,
+            "answer": str
+        }
+    ]
 }
+"""
 
-TOSSUP_MARKERS = [
-    r"^(?:Tossup|TU|Toss-up|Toss\sup)\s?#?\d+:?\s?"
-]
+def getTossupMarker(file : str) -> str:
+    if tossupMatch := re.findall(r"^(?:Tossup|TU|Toss-up|Toss up)\s?#?\d{1,2}:?\s?", file, re.MULTILINE | re.IGNORECASE): # := is for assignment within expressions
+        return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", tossupMatch[0]) # replace the number with a capturing group called "number"
+    elif re.findall(r"^\d{1,2}\.\s", file, re.MULTILINE):
+        return r"\d{1,2}\s"
+    else:
+        print("ERROR: Could not determine tossup format")
+        quit()
 
-# def isRoundHeader(text : str, seriesName : str, ) -> bool:
-#     if bool(re.search(r'(?i)certamen', text)) and :
-
-#     return False
+def getBonusMarker(file : str) -> str:
+    if bonusMatch := re.findall(r"^(?:Bonus 1|B1|Bonus).?:?\s?", file, re.MULTILINE | re.IGNORECASE):
+        return re.sub(r"\d", r"\\d", bonusMatch[0])
+    else:
+        print("WARNING: Could not find boni")
+        return None # type: ignore
 
 def isAnswer(text : str):
     """
@@ -38,28 +56,23 @@ def isAnswer(text : str):
         return text
     return None
 
+def updateText(dictionary : dict, key : str, text : str, lineNumber : int) -> None:
+    if key not in dictionary or not dictionary[key]:
+        dictionary[key] = text
+        return
+    else:
+        dictionary[key] = "\n" + text
+
 file = open(os.path.join(OUTPUT_DIRECTORY, TEST_FILE), encoding="utf-8").read()
-bestTossupMarker = None
-bestBonusMarker = None
-
-if tossupMatch := re.findall(r"^(?:Tossup|TU|Toss-up|Toss up)\s?#?\d{1,2}:?\s?", file, re.MULTILINE | re.IGNORECASE): # := is for assignment within expressions
-    bestTossupMarker = re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", tossupMatch[0]) # replace the number with a capturing group called "number"
-elif re.findall(r"^\d{1,2}\.\s", file, re.MULTILINE):
-    bestTossupMarker = r"\d{1,2}\s"
-else:
-    print("ERROR: Could not determine tossup format")
-    quit()
-
-if bonusMatch := re.findall(r"^(?:Bonus 1|B1|Bonus).?:?\s?", file, re.MULTILINE | re.IGNORECASE):
-    bestBonusMarker = re.sub(r"\d", r"\\d", bonusMatch[0])
-else:
-    print("WARNING: Could not find boni")
-
+bestTossupMarker = getTossupMarker(file)
+bestBonusMarker = getBonusMarker(file)
 file = file.splitlines()
 
-round = NEW_ROUND
+round = {}
 round["series"], round["division"], round["year"] = TEST_FILE[:-4].split("_")
 round["year"] = int(round["year"])  
+round["number"] = None
+round["questions"] = []
 
 state = None
 
@@ -79,33 +92,16 @@ for i in range(len(file)):
         continue
     elif bestBonusMarker and (match := re.match(bestBonusMarker, line)):
         state = "bonus"
-        round["questions"][-1]["boni"].append({"question": line[len(match.group()):]})
+        round["questions"][-1]["boni"].append({"question": line[len(match.group()):], "answer":None})
         continue
     elif match := isAnswer(line):
         question = round["questions"][-1]
-        if state == "tossup":
-            state = "tossupAnswer"
-            question["answer"] = match
-        elif state == "bonus": 
+        if question["boni"]:
             state = "bonusAnswer"
-            question["boni"][-1]["answer"] = match
-        elif state == "tossupAnswer":
-            question["answer"] += match
-        elif state == "bonusAnswer":
-            question["boni"][-1]["answer"] += " " + match
-        else: # after the start of a new page
-            if question["boni"]:
-                state = "bonusAnswer"
-                if "answer" in question["boni"][-1].keys():
-                    question["boni"][-1]["answer"] += " " + match
-                else:
-                    question["boni"][-1]["answer"] = match
-            else:
-                state = "tossupAnswer"
-                if question["answer"]:
-                    question["answer"] = match
-                else:
-                    question["answer"] = " " + match
+            updateText(question["boni"][-1], "answer", match, i)
+        else:
+            state = "tossupAnswer"
+            updateText(question, "answer", match, i)
         continue
     ### Handling unspecified text:
     else:
@@ -131,27 +127,25 @@ for i in range(len(file)):
                 round["number"] = roundNum
             continue
         if state == "tossupAnswer":
-            round["questions"][-1]["answer"] += " " + line
+            round["questions"][-1]["answer"] += "\n" + line
             continue
         if state == "bonusAnswer":
-            round["questions"][-1]["boni"][-1]["answer"] += " " + line
+            round["questions"][-1]["boni"][-1]["answer"] += "\n" + line
             continue
         if i < len(file) - 1: 
             nextLine = file[i+1]
             if not (nextLine) or re.match(bestTossupMarker, nextLine) or (bestBonusMarker and re.match(bestBonusMarker, nextLine)): # if the next line is the start of a new question
                 if state == "tossup":
                     round["questions"][-1]["answer"] = line
-                    # round["questions"].append(question)
-                    # question = None
                     continue
                 if state == "bonus":
                     round["questions"][-1]["boni"][-1]["answer"] = line
                     continue
         if state == "tossup": # NOT an else if; if there is a next line but it's not the start of a new question, then current line probably isn't an answer
-            round["questions"][-1]["question"] += " " + line
+            round["questions"][-1]["question"] += "\n" + line
             continue
         if state == "bonus":
-            round["questions"][-1]["boni"][-1]["question"] += " " + line
+            round["questions"][-1]["boni"][-1]["question"] += "\n" + line
             continue
 
 
