@@ -23,9 +23,10 @@ MACRONS = "ĀĒĪŌŪāēīōū"
 PUNCTUATION_SUBSTITUTES = {
     "\"":["“", "”"],
     "'":["‘", "’"],
-    "-":["–"]
+    "-":["–"],
+    "...":["…"]
 }
-PUNCTUATION = r".?!,:;#\-—&='\"/()" 
+PUNCTUATION = r".?!,:;#\-—&='\"/()\[\]" 
 
 UNKNOWN_CHARACTER_PATTERN = fr"(?a)[^\w\s{MACRONS}{PUNCTUATION}]" # (?a) means only ASCII matching (otherwise the weird characters will be counted as unicode letters)
 
@@ -43,19 +44,6 @@ def standardizePunctuation(text : str) -> str:
         for badChar in badChars:
             text = text.replace(badChar, punct)
     return text
-
-# def extractText(fileName: str) -> list[str]:
-#     doc = pymupdf.open(fileName)
-#     extractedBlocks = []
-#     for page in doc:
-#         blocks = page.get_text("blocks") # type: ignore
-#         for block in blocks:
-#             block = (fixMacrons(standardizePunctuation(block[4]))
-#                 .strip()
-#                 .replace("\n", ""))
-#             if block!= "":
-#                 extractedBlocks.append(block)
-#     return extractedBlocks
 
 def extractText(fileName: str, inDir: str, outDir: str) -> None:
     doc = pymupdf.open(os.path.join(inDir, fileName))
@@ -79,6 +67,3 @@ def printArr(arr : list[str]) -> str:
 
 def parse(fileName:str ) -> None:
     return
-
-# blocks = extractText(TEST_FILE, INPUT_DIRECTORY, OUTPUT_DIRECTORY)
-# print(blocks)
