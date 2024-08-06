@@ -30,18 +30,18 @@ Question:
 def getTossupMarker(file : str) -> str:
     if tossupMatch := re.findall(r"^(?:Tossup|TU|Toss-up|Toss up)\s?#?\d{1,2}:?\s?", file, re.MULTILINE | re.IGNORECASE): # := is for assignment within expressions
         return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", tossupMatch[0]) # replace the number with a capturing group called "number"
-    elif re.findall(r"^\d{1,2}\.\s", file, re.MULTILINE):
-        return r"\d{1,2}\s"
+    elif tossupMatch:= re.findall(r"^\d{1,2}(?:\.|:)\s", file, re.MULTILINE):
+        return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", tossupMatch[0])
     else:
-        print("ERROR: Could not determine tossup format")
-        quit()
+        print(f"ERROR: Could not determine tossup format ({file})")
+        return ""
 
 def getBonusMarker(file : str) -> str:
     if bonusMatch := re.findall(r"^(?:Bonus 1|B1|Bonus).?:?\s?", file, re.MULTILINE | re.IGNORECASE):
         return re.sub(r"\d", r"\\d", bonusMatch[0])
     else:
-        print("WARNING: Could not find boni")
-        return None # type: ignore
+        print(f"WARNING: Could not find boni ({file})")
+        return ""
 
 def isAnswer(text : str):
     """
@@ -60,11 +60,12 @@ def updateText(dictionary : dict, key : str, text : str, lineNumber : int) -> No
     else:
         dictionary[key] = "\n" + text
 
-
 def parseText(fileName: str, inDir: str, outDir: str) -> None:
     # Setup
     file = open(os.path.join(inDir, fileName), encoding="utf-8").read()
     bestTossupMarker = getTossupMarker(file)
+    if not bestTossupMarker:
+        return
     bestBonusMarker = getBonusMarker(file)
     file = file.splitlines()
     round = {}
@@ -72,7 +73,6 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
     round["year"] = int(round["year"])  
     round["number"] = None
     round["questions"] = []
-
     state = None
     
     # Parse, line by line
@@ -90,11 +90,11 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
             question["answer"] = None
             question["boni"] = []
             continue
-        elif bestBonusMarker and (match := re.match(bestBonusMarker, line)):
+        elif bestBonusMarker and round["questions"] and (match := re.match(bestBonusMarker, line)):
             state = "bonus"
             round["questions"][-1]["boni"].append({"question": line[len(match.group()):], "answer":None})
             continue
-        elif match := isAnswer(line):
+        elif round["questions"] and (match := isAnswer(line)):
             question = round["questions"][-1]
             if question["boni"]:
                 state = "bonusAnswer"
