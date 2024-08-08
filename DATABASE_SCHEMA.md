@@ -2,24 +2,17 @@
 
 ## Collections
 
-### Packets
-
-| Field             | Type     | Description                                                      |
-|-------------------|----------|------------------------------------------------------------------|
-| `_id`             | ObjectId | Unique identifier for the packet. Automatically created by MongoDB at insertion. |
-| `division`        | String   | Difficulty level of the packet. Possible values: `novice`, `intermediate`, `advanced`, `elite`. |
-| `series`          | String   | Tournament name. Examples: `Longhorn`, `Area F`, `NJCL`, etc.    |
-| `tier`            | String   | Possible values: `local`, `regional`, `state`, `national`.       |
-| `year`            | Int32    | The year the packet was created.                                 |
-| `source_url`      | String   | URL source of the packet.                                        |
-
 ### Rounds
 
 | Field             | Type     | Description                                                      |
 |-------------------|----------|------------------------------------------------------------------|
 | `_id`             | ObjectId | Unique identifier for the round.                                 |
-| `packet_id`       | ObjectID | Identifier of the associated packet.                             |
+| `series`          | String   | Tournament name. Examples: `Longhorn`, `Area F`, `NJCL`, etc.    |
+| `division`        | String   | Difficulty level of the packet. Possible values: `novice`, `intermediate`, `advanced`, `elite`. |
+| `year`            | Int32    | The year the packet was created.                                 |
 | `number`          | String   | Either a number, or the word `finals`.                           |
+| `tier`            | String   | Possible values: `local`, `regional`, `state`, `national`.       |
+| `source_url`      | String   | URL source of the packet.                                        |
 
 ### Questions
 
