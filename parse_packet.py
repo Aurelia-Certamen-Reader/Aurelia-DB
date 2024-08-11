@@ -29,9 +29,9 @@ Question:
 
 def getTossupMarker(file : str) -> str:
     if tossupMatch := re.findall(r"^(?:Tossup|TU|Toss-up|Toss up)\s?#?\d{1,2}:?\s?", file, re.MULTILINE | re.IGNORECASE): # := is for assignment within expressions
-        return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", tossupMatch[0]) # replace the number with a capturing group called "number"
+        return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", re.escape(tossupMatch[0])) # replace the number with a capturing group called "number"
     elif tossupMatch:= re.findall(r"^\d{1,2}(?:\.|:)\s", file, re.MULTILINE):
-        return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", tossupMatch[0])
+        return re.sub(r"\d{1,2}", r"(?P<number>\\d{1,2})", re.escape(tossupMatch[0]))
     else:
         print(f"ERROR: Could not determine tossup format ({file})")
         return ""
@@ -58,7 +58,7 @@ def updateText(dictionary : dict, key : str, text : str, lineNumber : int) -> No
         dictionary[key] = text
         return
     else:
-        dictionary[key] = "\n" + text
+        dictionary[key] += "\n" + text
 
 def parseText(fileName: str, inDir: str, outDir: str) -> None:
     # Setup
@@ -85,7 +85,7 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
             state = "tossup"
             round["questions"].append({})
             question = round["questions"][-1]
-            question["number"] = match.group("number")
+            question["number"] = int(match.group("number"))
             question["question"] = line[len(match.group()):]
             question["answer"] = None
             question["boni"] = []
