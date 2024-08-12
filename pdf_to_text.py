@@ -57,13 +57,3 @@ def extractText(fileName: str, inDir: str, outDir: str) -> None:
                 outfile.write(block + "\n")
         outfile.write("\n")
     return
-
-def printArr(arr : list[str]) -> str:
-    out = "["
-    for item in arr:
-        out += f"\n    \'{item}\',"
-    out+="\n]"
-    return out
-
-def parse(fileName:str ) -> None:
-    return
