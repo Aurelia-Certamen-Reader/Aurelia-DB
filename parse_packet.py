@@ -53,7 +53,7 @@ def isAnswer(text : str):
         return text
     return None
 
-def updateText(dictionary : dict, key : str, text : str, lineNumber : int) -> None:
+def updateText(dictionary : dict, key : str, text : str) -> None:
     if key not in dictionary or not dictionary[key]:
         dictionary[key] = text
         return
@@ -98,10 +98,10 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
             question = round["questions"][-1]
             if question["boni"]:
                 state = "bonusAnswer"
-                updateText(question["boni"][-1], "answer", match, i)
+                updateText(question["boni"][-1], "answer", match)
             else:
                 state = "tossupAnswer"
-                updateText(question, "answer", match, i)
+                updateText(question, "answer", match)
             continue
         ### Handling unspecified text:
         else:
@@ -113,7 +113,7 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
                 elif match := re.search(r"Round (?P<num>One|Two|Three|Four|Five|Six|Seven|Eight|Nine)", line, re.IGNORECASE):
                     roundNum = {"one":1, "two":2, "three":3, "four":4, "five":5, "six":6, "seven":7, "eight":8, "nine":9}[match.group("num").lower()] 
                 elif re.search(r"\bround\b", line, re.IGNORECASE) and (match := re.search(r"finals?\b", line, re.IGNORECASE)):
-                    roundNum = "final"
+                    roundNum = -1
                 else:
                     continue # It's a header, but doesn't contain the round number; will need to change if there's a packet where the question text is split across two pages
 
@@ -121,16 +121,16 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
                     round["number"] = roundNum
                 elif round["number"]!= roundNum: # If the round number is different from what currently exists, write the current round to a file and reset the round object
                     oldNum = round["number"]
-                    with open(os.path.join(outDir, fileName[:-4] + "_" + ("final" if oldNum == "final" else "r"+str(oldNum)) + ".json"), "w", encoding="utf-8") as outfile:
-                        outfile.write(json.dumps(round, indent=4))
+                    with open(os.path.join(outDir, fileName[:-4] + "_" + ("final" if oldNum == -1 else "r"+str(oldNum)) + ".json"), "w", encoding="utf-8") as outfile:
+                        outfile.write(json.dumps(round, indent=4, ensure_ascii=False))
                     round["questions"] = []
                     round["number"] = roundNum
                 continue
             if state == "tossupAnswer":
-                round["questions"][-1]["answer"] += "\n" + line
+                updateText(round["questions"][-1], "answer", line)
                 continue
             if state == "bonusAnswer":
-                round["questions"][-1]["boni"][-1]["answer"] += "\n" + line
+                updateText(round["questions"][-1]["boni"][-1], "answer", line)
                 continue
             if i < len(file) - 1: 
                 nextLine = file[i+1]
@@ -142,12 +142,12 @@ def parseText(fileName: str, inDir: str, outDir: str) -> None:
                         round["questions"][-1]["boni"][-1]["answer"] = line
                         continue
             if state == "tossup": # NOT an else if; if there is a next line but it's not the start of a new question, then current line probably isn't an answer
-                round["questions"][-1]["question"] += "\n" + line
+                updateText(round["questions"][-1], "question", line)
                 continue
             if state == "bonus":
-                round["questions"][-1]["boni"][-1]["question"] += "\n" + line
+                updateText(round["questions"][-1]["boni"][-1], "question", line)
                 continue
 
     # Wrapping up
-    with open(os.path.join(outDir, f"{fileName[:-4]}_{"final" if round["number"]=="final" else ("r"+str(round["number"]))}.json"), "w", encoding="utf-8") as outfile:
-        outfile.write(json.dumps(round, indent=4))
+    with open(os.path.join(outDir, f"{fileName[:-4]}_{"final" if round["number"]==-1 else ("r"+str(round["number"]))}.json"), "w", encoding="utf-8") as outfile:
+        outfile.write(json.dumps(round, indent=4, ensure_ascii=False))
