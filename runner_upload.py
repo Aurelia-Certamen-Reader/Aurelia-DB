@@ -20,9 +20,17 @@ for file in files:
     try:
         result = upload_round.uploadRound(round, rounds, questions)
         if(len(result["success"])!=0): # handle successful qs
-            round["questions"] = result["success"]
-            outfile = open(os.path.join("packets\\success", file), "w", encoding="utf-8")
-            outfile.write(json.dumps(round, indent=4, ensure_ascii=False))
+            try: # if the file already exists, add the successful questions to the questions already there
+                outfile = open(os.path.join("packets\\success", file), "r", encoding="utf-8")    
+                oldRound = json.load(outfile)
+                oldRound["questions"].extend(result["success"]) # add successful questions to oldRound
+                list.sort(oldRound["questions"], key = lambda question: question["number"]) # sort the list of questions
+                outfile.truncate(0)
+                outfile.write(json.dumps(oldRound, indent=4, ensure_ascii=False))
+            except: # if the file doesn't already exist, create it
+                round["questions"] = result["success"]
+                outfile = open(os.path.join("packets\\success", file), "w", encoding="utf-8")
+                outfile.write(json.dumps(round, indent=4, ensure_ascii=False))
         if(len(result["fail"])!=0): # handle invalid qs
             round["questions"] = result["fail"]
             outfile = open(os.path.join("packets\\failed", file), "w", encoding="utf-8")

@@ -87,7 +87,7 @@ def uploadRound(round: dict, rounds_collection: Collection, questions_collection
             if (question["question"] == foundQuestion["question"]) and (question["answer"]==foundQuestion["answer"]) and (question["boni"]==foundQuestion["boni"]): # duplicate of an existing question
                 temp = {"_id":str(foundQuestion["_id"])}
                 temp.update(question)
-                validQuestions.append(temp)
+                validQuestions.append(question)
                 continue
             else: # matches round and number, but fields don't match
                 question["error"] = "Conflicts with existing question"
