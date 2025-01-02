@@ -5,10 +5,9 @@ import json
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import upload_round
-mongo_user = os.getenv("MONGO_USER")
-mongo_pass = os.getenv("MONGO_PASS")
 
-uri = f"mongodb+srv://{mongo_user}:{mongo_pass}@testing.fsua0t5.mongodb.net/?retryWrites=true&w=majority&appName=Testing"
+uri = os.getenv("MONGO_URI")
+
 client = MongoClient(uri, server_api=ServerApi('1'))
 rounds = client["Testing"]["Rounds"]
 questions = client["Testing"]["Questions"]
